@@ -1,4 +1,4 @@
-# README #
+# Model Tools #
 
 This provides helpers for implementing the Scikit-Learn interface used internally by Hume.
 
