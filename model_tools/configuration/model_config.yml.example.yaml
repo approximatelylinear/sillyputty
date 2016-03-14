@@ -1,0 +1,67 @@
+#   This is a model definition.
+#       - 'model': Identifies a dictionary of models. Each key is a model name used by implementations to identify the right location in the config file. (Models can define submodels by including a 'model' entry.)
+#       - 'wrapper_class': Identifies the class that implements the Hume interface for the model.
+#       - 'model_callable': Identifies the class that contains the actual model functionality.
+#       - 'params': Construction parameters for the model class.
+# model_callable: make_pipeline
+
+#   Sub-model definitions, split out so that they can be tested independently.
+models:
+    vectorizer: &vectorizer
+        name: vectorizer
+        wrapper_class: Vectorizer
+        model_callable:
+            module: 'sklearn.feature_extraction.text'
+            func: 'TfidfVectorizer'
+        parameters:
+            max_df: .9
+            max_features: 2000000
+            min_df: 2
+            stop_words: null
+            token_pattern: '(?u)\|'
+    svd: &svd
+        name: svd
+        wrapper_class: Model
+        model_callable:
+            module: 'sklearn.decomposition'
+            func: 'TruncatedSVD'
+        parameters:
+            n_components: 50
+    normalizer: &normalizer
+        name: normalizer
+        wrapper_class: Model
+        model_callable:
+            module: 'sklearn.preprocessing.data'
+            func: 'Normalizer'
+        parameters:
+            copy: false
+    lsa: &lsa
+        name: lsa
+        wrapper_class: Pipeliner
+        model_callable:
+        model:
+            - *svd
+            - *normalizer
+    kmeans: &kmeans
+        name: k-means
+        wrapper_class: Clusterer
+        model_callable:
+            module: 'sklearn.cluster'
+            func: 'KMeans'
+        parameters:
+            n_clusters: 25
+            init: 'k-means++'
+            max_iter: 500
+            n_init: 1
+            # n_jobs: 5
+            verbose: true
+    clusterer: &clusterer
+        name: clusterer
+        wrapper_class: Pipeliner
+        model:
+            - *vectorizer
+            - *lsa
+            - *kmeans
+#   Main entrypoint
+model:
+    *clusterer

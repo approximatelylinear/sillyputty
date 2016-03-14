@@ -1,0 +1,7 @@
+pyyaml
+numpy
+scipy
+pandas
+scikit-learn
+pytest
+cloud
