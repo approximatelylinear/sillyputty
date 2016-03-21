@@ -1,6 +1,3 @@
-
-
-
 #   Stdlib
 import os
 import hashlib
@@ -13,7 +10,6 @@ import urllib
 import itertools
 from pprint import pformat
 from io import BytesIO
-
 
 #   3rd party
 import requests
@@ -49,12 +45,14 @@ class S3ContentList(object):
     def read(self, chunk_size=None):
         def _get():
             for item in self.items:
-                if (isinstance(item, dict) and hasattr(item.get('Body'), 'read')):
+                if (isinstance(item, dict) and hasattr(
+                        item.get('Body'), 'read')):
                     content = item['Body'].read(amt=chunk_size)
                     if len(content):
                         yield content
                 else:
                     yield ''
+
         result = list(_get())
         if not any(result):
             result = []
@@ -111,9 +109,7 @@ class Response(object):
 
 class S3Response(requests.models.Response):
 
-    __attrs__ = requests.models.Response.__attrs__ + [
-        'parsed_json'
-    ]
+    __attrs__ = requests.models.Response.__attrs__ + ['parsed_json']
 
     def __init__(self, resp=None):
         super(S3Response, self).__init__()
@@ -167,14 +163,17 @@ class S3Response(requests.models.Response):
                 if self.status_code == 0:
                     self._content = None
                 else:
-                    _content = list(self.iter_content(requests.models.CONTENT_CHUNK_SIZE))
+                    _content = list(self.iter_content(
+                        requests.models.CONTENT_CHUNK_SIZE))
                     if isinstance(self.raw, S3ContentList):
                         #   Join the individual segments.
                         _content = list(itertools.izip(*_content))
-                        self._content = [requests.compat.bytes().join(c) for c in _content]
+                        self._content = [requests.compat.bytes().join(c)
+                                         for c in _content]
                     else:
                         #   Join the chunks
-                        self._content = requests.compat.bytes().join(_content) or bytes()
+                        self._content = requests.compat.bytes().join(
+                            _content) or bytes()
 
             except AttributeError:
                 self._content = None
@@ -183,7 +182,6 @@ class S3Response(requests.models.Response):
         # don't need to release the connection; that's been handled by urllib3
         # since we exhausted the data.
         return self._content
-
 
 
 class S3Adapter(BaseAdapter):
@@ -260,7 +258,8 @@ class S3Adapter(BaseAdapter):
                 resp = bucket.download_file(key, filename)
         else:
             if key == '' or key == '_all':
-                resp = S3ContentList([ key.get() for key in bucket.objects.all() ])
+                resp = S3ContentList([key.get() for key in bucket.objects.all()
+                                      ])
             else:
                 bucket_key = s3.Object(name, key)
                 resp = S3Content(bucket_key.get())
@@ -286,7 +285,8 @@ class S3Adapter(BaseAdapter):
                 # the object does not have a completed or ongoing restoration
                 # request.
                 if obj.restore is None:
-                    LOGGER.info('Submitting restoration request: {}'.format(obj.key))
+                    LOGGER.info('Submitting restoration request: {}'.format(
+                        obj.key))
                     obj.restore_object()
                 # Print out objects whose restoration is on-going
                 elif 'ongoing-request="true"' in obj.restore:
@@ -391,13 +391,15 @@ def test_s3():
     sess.mount('s3', S3Adapter())
 
     urls = [
-        {'method': 'put', 'url': "s3://test.bar/test.foo", "body": "put test.foo"},
+        {'method': 'put',
+         'url': "s3://test.bar/test.foo",
+         "body": "put test.foo"},
         # {'method': 'put', 'url': "s3://test.bar/test.baz", "body": "put test.baz"},
         # {'method': 'put', 'url': "s3://test.bar/test.foo/_upload_file", "params": {"filename": "foo_upload.txt"}},
         # {'method': 'get', 'url': "s3://test.bar/test.foo"},
         # {'method': 'get', 'url': "s3://test.bar/test.foo/_download_file", "params": {"filename": "foo_download.txt"}},
-
-        {'method': 'get', 'url': "s3://test.bar"},
+        {'method': 'get',
+         'url': "s3://test.bar"},
 
         #{'method': 'get', 'url': "s3://test.bar/_all/_download_file", "params": {"filename": "foo_download.txt"}},
         #{'method': 'get', 'url': "s3://test.bar//_download_file", "params": {"filename": "foo_download.txt"}},
@@ -411,11 +413,13 @@ def test_s3():
         LOGGER.info(pformat(url_info))
         if url_info['method'] == 'put':
             if url_info.get('params'):
-                url_info['url'] = u'{}?{}'.format(url_info['url'], urllib.urlencode(url_info['params']))
+                url_info['url'] = u'{}?{}'.format(
+                    url_info['url'], urllib.urlencode(url_info['params']))
             resp = sess.put(url_info['url'], data=url_info.get('body'))
         elif url_info['method'] == 'get':
             if url_info.get('params'):
-                url_info['url'] = u'{}?{}'.format(url_info['url'], urllib.urlencode(url_info['params']))
+                url_info['url'] = u'{}?{}'.format(
+                    url_info['url'], urllib.urlencode(url_info['params']))
             resp = sess.get(url_info['url'], params=url_info.get('params'))
         elif url_info['method'] == 'delete':
             resp = sess.delete(url_info['url'])

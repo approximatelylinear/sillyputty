@@ -1,4 +1,3 @@
-
 #   Stdlib
 import os
 import hashlib
@@ -90,7 +89,8 @@ def load_data(uri_or_data):
                     elif 'csv' in content_type:
                         content_type = 'csv'
                     else:
-                        raise Exception("Unknown content-type: [ {} ]".format(content_type))
+                        raise Exception("Unknown content-type: [ {} ]".format(
+                            content_type))
     else:
         # Data was passed in.
         # TBD: Permit data stream with EOF indicated by '\n\n'
@@ -102,7 +102,9 @@ def load_data(uri_or_data):
         else:
             content_type = 'svmlight'
             data = uri_or_data
-    data = load_by_content_type(content_type, uri_or_data=uri_or_data, data=data)
+    data = load_by_content_type(content_type,
+                                uri_or_data=uri_or_data,
+                                data=data)
     return data
 
 
@@ -164,10 +166,16 @@ def test_load_data():
         LOGGER.info(y.shape)
         LOGGER.info(y)
         with open('abc.svmlight', 'wb') as f_out:
-            svmlight_dump(X=X, y=y, f=f_out, comment='labels:b d features:a c e')
+            svmlight_dump(X=X,
+                          y=y,
+                          f=f_out,
+                          comment='labels:b d features:a c e')
     if not os.path.exists('abc.csv'):
         with open('abc.csv', 'wb') as f_out:
-            pd.DataFrame([{'a': 'b', 'c': 'd'}]).to_csv(f_out, index=False, header=True)
+            pd.DataFrame([{'a': 'b',
+                           'c': 'd'}]).to_csv(f_out,
+                                              index=False,
+                                              header=True)
     uri_or_data_list = [
         'json://abc.json',
         'svmlight://abc.svmlight',
