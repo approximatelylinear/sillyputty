@@ -12,13 +12,14 @@ import itertools
 from pprint import pformat
 from io import BytesIO
 
-
 #   3rd party
 import requests
 import numpy as np
 import pandas as pd
 from sklearn.datasets import load_svmlight_file as svmlight_load, dump_svmlight_file as svmlight_dump
 
+#   Custom
+from .s3 import S3Adapter
 
 LOGGER = logging.getLogger(__name__)
 
@@ -51,15 +52,22 @@ def load_data(uri_or_data):
         # It's a uri
         scheme = m.group('scheme')
         path = m.group('path')
-        print scheme
-        print path
-        pdb.set_trace()
         if scheme == 's3':
-            #   The scheme indicates the location
+            #   File is located on s3
+            sess = requests.Session()
+            sess.mount('s3', S3Adapter())
+            data = sess.get(uri_or_data)
         elif scheme == 'file':
-            content_type = scheme
             uri_or_data = path
-            data = None # Load from file
+            #   Get content type from extension
+            _, ext = os.path.splitext(uri_or_data)
+            if ext == '.json':
+                content_type = 'json'
+            elif ext == '.svmlight':
+                content_type = 'svmlight'
+            elif ext == '.csv':
+                content_type = 'csv'
+            data = None
         else:
             #   It's a remote resource.
             try:
