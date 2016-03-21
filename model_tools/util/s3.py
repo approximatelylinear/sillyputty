@@ -397,7 +397,7 @@ def test_s3():
         # {'method': 'get', 'url': "s3://test.bar/test.foo"},
         # {'method': 'get', 'url': "s3://test.bar/test.foo/_download_file", "params": {"filename": "foo_download.txt"}},
 
-        {'method': 'get', 'url': "s3://test.bar"}, # Hangs
+        {'method': 'get', 'url': "s3://test.bar"},
 
         #{'method': 'get', 'url': "s3://test.bar/_all/_download_file", "params": {"filename": "foo_download.txt"}},
         #{'method': 'get', 'url': "s3://test.bar//_download_file", "params": {"filename": "foo_download.txt"}},
