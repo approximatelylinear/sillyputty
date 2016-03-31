@@ -31,7 +31,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     platforms='any',
-    install_requires=dependencies,
+    install_requires=REQS,
     entry_points={},
     classifiers=[
         # As from http://pypi.python.org/pypi?%3Aaction=list_classifiers
