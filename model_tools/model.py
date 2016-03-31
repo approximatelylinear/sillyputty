@@ -23,7 +23,7 @@ from sklearn.pipeline import make_pipeline as sk_make_pipeline
 
 #   Custom current
 from .exceptions import *
-from .util import md5_hex, import_func
+from .util.util import md5_hex, import_func
 
 try:
     THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -40,8 +40,14 @@ def make_model(config, globals_=None):
     if wrapper_cls is None:
         wrapper_cls = Model
     else:
-        #   It's a string.
-        wrapper_cls = globals_.get(wrapper_cls)
+        if isinstance(wrapper_cls, basestring):
+            #   It's a string.
+            wrapper_cls = globals_.get(wrapper_cls)
+        elif isinstance(wrapper_cls, dict):
+            wrapper_cls = import_func(**wrapper_cls)
+    """
+    model = wrapper_cls(config=config, name=config.get('name'), globals_=globals_)
+    """
     model = wrapper_cls(config=config,
                         name=config.get('name'),
                         globals_=globals_)
@@ -61,7 +67,11 @@ class Configurer(object):
             globals_ = globals()
         name = config['name']
         wrapper_cls = config['wrapper_class']
-        wrapper_cls = globals_.get(wrapper_cls)
+        if isinstance(wrapper_cls, basestring):
+            #   It's a string.
+            wrapper_cls = globals_.get(wrapper_cls)
+        elif isinstance(wrapper_cls, dict):
+            wrapper_cls = import_func(**wrapper_cls)
         submodel = wrapper_cls(config=config, name=name)
         return submodel
 
@@ -92,9 +102,9 @@ class Persister(object):
         if self._persist_attrs is not None:
             obj = {k: getattr(self, k, None) for k, v in self._persist_attrs}
         else:
-            fltr = lambda x: not (x.startswith('__') or inspect.isroutine(x))
-            attrs = inspect.getmembers(obj, fltr)
-            obj = {k: getattr(self, k) for k, v in attrs}
+            fltr = lambda x: not (x[0].startswith('__') or inspect.isroutine(x[1]))
+            attrs = inspect.getmembers(self)
+            obj = dict(filter(fltr, attrs))
         return obj
 
     def _save(self, obj):
@@ -110,7 +120,7 @@ class Persister(object):
 
     def load(self):
         obj = self._load()
-        for k, v in obj.iteritems:
+        for k, v in obj.iteritems():
             setattr(self, k, v)
         return self
 
@@ -212,7 +222,7 @@ class Model(Configurer):
             globals_ = globals()
         config = self.config
         submodel_configs = config.get('model')
-        submodels = [self._load_model_wrapper(v)
+        submodels = [self._load_model_wrapper(v, globals_)
                      for v in submodel_configs] if submodel_configs else None
         return submodels
 
@@ -273,12 +283,17 @@ class Model(Configurer):
         """
         Delegate to properties of `self.model`.
         """
-        try:
-            val = getattr(self.model, name)
-        except AttributError:
-            raise
+        # LOGGER.debug("Getting {}".format(name))
+        if hasattr(self, 'model'):
+            try:
+                val = getattr(self.model, name)
+            except AttributeError:
+                raise
+            else:
+                return val
         else:
-            return val
+            raise AttributeError(name)
+
 
 
 class Pipeliner(Model):
@@ -289,8 +304,8 @@ class Pipeliner(Model):
         super(Pipeliner, self).__init__(*args, **kwargs)
 
     def _init_model(self, globals_=None):
-        submodels = self.submodels
-        return submodels
+        if self.submodels:
+            return self.submodels[-1]
 
     def fit(self, X):
         X_trans = X
@@ -330,11 +345,32 @@ class Pipeliner(Model):
         self.data['y_pred'] = y_pred
         return y_pred
 
-    #   TBD: Override __get__
     def get_labels(self):
-        model = self.submodels[-1]
+        model = self.model
         if hasattr(model.model, 'labels_'):
             return model.model.labels_
+
+    def __getattr__(self, name):
+        """
+        Delegate to properties of `self.model`.
+        """
+        # pdb.set_trace()
+        # LOGGER.debug("Getting {}".format(name))
+        if hasattr(self, 'model'):
+            try:
+                val = getattr(self.model, name)
+            except AttributeError:
+                try:
+                    val = getattr(self.model.model, name)
+                except AttributeError:
+                    raise
+                else:
+                    return val
+            else:
+                return val
+        else:
+            raise AttributeError(name)
+
 
 
 class SKPipeliner(Model):
