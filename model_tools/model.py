@@ -1,5 +1,3 @@
-
-
 #   Stdlib
 import os
 import re
@@ -20,20 +18,20 @@ except ImportError:
 import yaml
 import numpy as np
 import pandas as pd
-import cloud # For function serialization
+import cloud  # For function serialization
 from sklearn.pipeline import make_pipeline as sk_make_pipeline
 
 #   Custom current
 from .exceptions import *
-from .util import md5_hex, import_func
+from .util.util import md5_hex, import_func
 
 try:
     THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 except NameError:
     THIS_DIR = os.path.abspath(os.getcwd())
 
-
 LOGGER = logging.getLogger(__name__)
+
 
 def make_model(config, globals_=None):
     if globals_ is None:
@@ -42,11 +40,18 @@ def make_model(config, globals_=None):
     if wrapper_cls is None:
         wrapper_cls = Model
     else:
-        #   It's a string.
-        wrapper_cls = globals_.get(wrapper_cls)
+        if isinstance(wrapper_cls, basestring):
+            #   It's a string.
+            wrapper_cls = globals_.get(wrapper_cls)
+        elif isinstance(wrapper_cls, dict):
+            wrapper_cls = import_func(**wrapper_cls)
+    """
     model = wrapper_cls(config=config, name=config.get('name'), globals_=globals_)
+    """
+    model = wrapper_cls(config=config,
+                        name=config.get('name'),
+                        globals_=globals_)
     return model
-
 
 
 class Configurer(object):
@@ -62,7 +67,11 @@ class Configurer(object):
             globals_ = globals()
         name = config['name']
         wrapper_cls = config['wrapper_class']
-        wrapper_cls = globals_.get(wrapper_cls)
+        if isinstance(wrapper_cls, basestring):
+            #   It's a string.
+            wrapper_cls = globals_.get(wrapper_cls)
+        elif isinstance(wrapper_cls, dict):
+            wrapper_cls = import_func(**wrapper_cls)
         submodel = wrapper_cls(config=config, name=name)
         return submodel
 
@@ -70,7 +79,8 @@ class Configurer(object):
         if globals_ is None:
             globals_ = globals()
         config = self.config
-        model_callable = config.get('model_callable') or getattr(self, '_model_callable', None)
+        model_callable = config.get('model_callable') or getattr(
+            self, '_model_callable', None)
         if model_callable is not None:
             #   Does it already exist in the global namespace?
             if isinstance(model_callable, basestring):
@@ -82,7 +92,6 @@ class Configurer(object):
         return model_callable
 
 
-
 class Persister(object):
     _persist_attrs = None
 
@@ -91,11 +100,11 @@ class Persister(object):
 
     def fltr_attrs(self):
         if self._persist_attrs is not None:
-            obj = { k: getattr(self, k, None) for k, v in self._persist_attrs }
+            obj = {k: getattr(self, k, None) for k, v in self._persist_attrs}
         else:
-            fltr = lambda x: not (x.startswith('__') or inspect.isroutine(x))
-            attrs = inspect.getmembers(obj, fltr)
-            obj = { k: getattr(self, k) for k, v in attrs }
+            fltr = lambda x: not (x[0].startswith('__') or inspect.isroutine(x[1]))
+            attrs = inspect.getmembers(self)
+            obj = dict(filter(fltr, attrs))
         return obj
 
     def _save(self, obj):
@@ -111,14 +120,12 @@ class Persister(object):
 
     def load(self):
         obj = self._load()
-        for k, v in obj.iteritems:
+        for k, v in obj.iteritems():
             setattr(self, k, v)
         return self
 
 
-
 class PicklerMixin(Persister):
-
     def __init__(self, path_model, *args, **kwargs):
         super(PicklerMixin, self).__init__(*args, **kwargs)
         self.path_model = path_model
@@ -132,6 +139,26 @@ class PicklerMixin(Persister):
             with open(self.path_model, 'rb') as f_in:
                 obj = pickle.load(f_in)
                 return obj
+
+
+class S3Mixin(Persister):
+    import boto3
+
+    def __init__(self, path_model, *args, **kwargs):
+        super(S3Mixin, self).__init__(*args, **kwargs)
+        self.path_model = path_model
+        client = self.boto3.client('s3')
+        self.client = client
+
+
+class SQSMixin(Persister):
+    import boto3
+
+    def __init__(self, path_model, *args, **kwargs):
+        super(SQSMixin, self).__init__(*args, **kwargs)
+        self.path_model = path_model
+        client = self.boto3.client('sqs')
+        self.client = client
 
 
 class Model(Configurer):
@@ -178,7 +205,6 @@ class Model(Configurer):
         The parameters might change during fitting or via grid search.
         TBD"""
 
-
     def _init_id(self):
         """
         md5 hex of the string representation of the parameters
@@ -196,7 +222,8 @@ class Model(Configurer):
             globals_ = globals()
         config = self.config
         submodel_configs = config.get('model')
-        submodels = [ self._load_model_wrapper(v) for v in submodel_configs] if submodel_configs else None
+        submodels = [self._load_model_wrapper(v, globals_)
+                     for v in submodel_configs] if submodel_configs else None
         return submodels
 
     def _init_model(self, globals_=None):
@@ -215,7 +242,9 @@ class Model(Configurer):
                 if submodel is not None:
                     model = submodel
                 else:
-                    raise Exception("Could not find a model callable for [ {} ]".format(self.__class__.__name__))
+                    raise Exception(
+                        "Could not find a model callable for [ {} ]".format(
+                            self.__class__.__name__))
         else:
             model = model_callable(**parameters)
         return model
@@ -254,12 +283,17 @@ class Model(Configurer):
         """
         Delegate to properties of `self.model`.
         """
-        try:
-            val = getattr(self.model, name)
-        except AttributError:
-            raise
+        # LOGGER.debug("Getting {}".format(name))
+        if hasattr(self, 'model'):
+            try:
+                val = getattr(self.model, name)
+            except AttributeError:
+                raise
+            else:
+                return val
         else:
-            return val
+            raise AttributeError(name)
+
 
 
 class Pipeliner(Model):
@@ -270,14 +304,15 @@ class Pipeliner(Model):
         super(Pipeliner, self).__init__(*args, **kwargs)
 
     def _init_model(self, globals_=None):
-        submodels = self.submodels
-        return submodels
+        if self.submodels:
+            return self.submodels[-1]
 
     def fit(self, X):
         X_trans = X
         for submodel in self.submodels[:-1]:
             # Fit and transform all models up until the last one.
-            LOGGER.debug("Fitting and transforming with [ {} ]".format(submodel.name))
+            LOGGER.debug("Fitting and transforming with [ {} ]".format(
+                submodel.name))
             X_trans = submodel.fit_transform(X_trans)
         self.data['X_fit'] = X_trans
         #   Now just perform a fit on the last model.
@@ -286,7 +321,8 @@ class Pipeliner(Model):
     def fit_transform(self, X):
         X_trans = X
         for submodel in self.submodels:
-            LOGGER.debug("Fitting and transforming with [ {} ]".format(submodel.name))
+            LOGGER.debug("Fitting and transforming with [ {} ]".format(
+                submodel.name))
             X_trans = submodel.fit_transform(X_trans)
         # Apply
         self.data['X_transform'] = X_trans
@@ -309,11 +345,31 @@ class Pipeliner(Model):
         self.data['y_pred'] = y_pred
         return y_pred
 
-    #   TBD: Override __get__
     def get_labels(self):
-        model = self.submodels[-1]
+        model = self.model
         if hasattr(model.model, 'labels_'):
             return model.model.labels_
+
+    def __getattr__(self, name):
+        """
+        Delegate to properties of `self.model`.
+        """
+        # pdb.set_trace()
+        # LOGGER.debug("Getting {}".format(name))
+        if hasattr(self, 'model'):
+            try:
+                val = getattr(self.model, name)
+            except AttributeError:
+                try:
+                    val = getattr(self.model.model, name)
+                except AttributeError:
+                    raise
+                else:
+                    return val
+            else:
+                return val
+        else:
+            raise AttributeError(name)
 
 
 
@@ -332,7 +388,9 @@ class SKPipeliner(Model):
         submodels = self.submodels
         model_callable = self._load_model_callable(config, globals_=globals_)
         if not model_callable:
-            raise Exception("Could not find a model callable for [ {} ]".format(self.__class__.__name__))
+            raise Exception(
+                "Could not find a model callable for [ {} ]".format(
+                    self.__class__.__name__))
         else:
             model = model_callable(*[sm.model for sm in submodel])
         return model
