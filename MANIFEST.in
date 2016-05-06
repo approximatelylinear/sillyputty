@@ -1,2 +1,2 @@
 include requirements.txt README.md
-recursive-include *.py *.yaml
+recursive-include . *.py *.yaml
