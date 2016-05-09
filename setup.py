@@ -28,6 +28,9 @@ setup(
     description='Helpers for implementing models using the Hume interface',
     long_description=__doc__,
     packages=find_packages(exclude=['tests']),
+    package_data = {
+        '': ['requirements.txt']
+    },
     include_package_data=True,
     zip_safe=False,
     platforms='any',
