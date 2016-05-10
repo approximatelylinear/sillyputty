@@ -5,7 +5,7 @@ This provides helpers for implementing the Scikit-Learn interface used internall
 ### What is this repository for? ###
 
 * Helps ensure model methods correspond to the Scikit-Learn interface.
-* Version 0.0.1
+* Version 0.1.1
 
 ### How do I get set up? ###
 
