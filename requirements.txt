@@ -4,4 +4,6 @@ scipy
 pandas
 scikit-learn
 pytest
-cloud
+cloudpickle
+odo
+boto3
