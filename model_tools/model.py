@@ -18,7 +18,7 @@ except ImportError:
 import yaml
 import numpy as np
 import pandas as pd
-import cloud  # For function serialization
+import cloudpickle  # For function serialization
 from sklearn.pipeline import make_pipeline as sk_make_pipeline
 
 #   Custom current
@@ -132,7 +132,7 @@ class PicklerMixin(Persister):
 
     def _save(self, obj):
         with open(self.path_model, 'wb') as f_out:
-            cloud.serialization.cloudpickle.dump(obj, f_out)
+            cloudpicklepickle.dump(obj, f_out)
 
     def _load(self):
         if os.path.exists(self.path_model):
