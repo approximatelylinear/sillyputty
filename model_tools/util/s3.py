@@ -9,13 +9,11 @@ import urlparse
 import urllib
 import itertools
 from pprint import pformat
-from io import BytesIO
 
 #   3rd party
 import requests
 import numpy as np
 import pandas as pd
-from sklearn.datasets import load_svmlight_file as svmlight_load, dump_svmlight_file as svmlight_dump
 
 LOGGER = logging.getLogger(__name__)
 
