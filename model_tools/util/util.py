@@ -18,7 +18,7 @@ import pandas as pd
 from sklearn.datasets import load_svmlight_file as svmlight_load, dump_svmlight_file as svmlight_dump
 
 #   Custom
-from .s3 import S3Adapter
+from .s3_util import S3Adapter
 
 LOGGER = logging.getLogger(__name__)
 
