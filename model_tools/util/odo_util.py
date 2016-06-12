@@ -103,48 +103,48 @@ def convert_object_to_pickle(data, **kwargs):
     return data_pkl
 
 
-@odo_convert.register(object, PICKLE)
-def convert_pickle_to_object(pkl_proxy):
-    parsed = urlparse.urlparse(pkl_proxy.path)
-    if parsed.scheme == 'memory':
-        obj = pickle.loads(pkl_proxy.data)
-    else:
-        with open(pkl_proxy.path, 'wb') as f_in:
-            obj = pickle.load(f_in)
-    return obj
+# @odo_convert.register(object, PICKLE)
+# def convert_pickle_to_object(pkl_proxy):
+#     parsed = urlparse.urlparse(pkl_proxy.path)
+#     if parsed.scheme == 'memory':
+#         obj = pickle.loads(pkl_proxy.data)
+#     else:
+#         with open(pkl_proxy.path, 'wb') as f_in:
+#             obj = pickle.load(f_in)
+#     return obj
 
 
-@odo_convert.register(object, S3(PICKLE))
-def convert_s3_pickle_to_object(s3_proxy, **kwargs):
-    return odo_convert(object, PICKLE(s3_proxy.object.get_contents_as_string()))
+# @odo_convert.register(object, S3(PICKLE))
+# def convert_s3_pickle_to_object(s3_proxy, **kwargs):
+#     return odo_convert(object, PICKLE(s3_proxy.object.get_contents_as_string()))
 
 
-#   Append operations
-@odo_append.register(PICKLE, object)
-def append_object_to_pickle(c, data, **kwargs):
-    obj_as_pkl = odo_convert(c, data)
-    parsed = urlparse.urlparse(c.path)
-    if parsed.scheme == 'memory':
-        c.data = obj_as_pkl
-    else:
-        with open(c.path, 'wb') as f_out:
-            f_out.write(obj_as_pkl)
-    return c
+# #   Append operations
+# @odo_append.register(PICKLE, object)
+# def append_object_to_pickle(c, data, **kwargs):
+#     obj_as_pkl = odo_convert(c, data)
+#     parsed = urlparse.urlparse(c.path)
+#     if parsed.scheme == 'memory':
+#         c.data = obj_as_pkl
+#     else:
+#         with open(c.path, 'wb') as f_out:
+#             f_out.write(obj_as_pkl)
+#     return c
 
 
-@odo_append.register(S3(PICKLE), object)
-def anything_to_s3_pickle(s3_proxy, data, **kwargs):
-    with tmpfile('.pkl', '.') as fname:
-        with open(fname, 'wb') as f_out:
-            odo_append(PICKLE(fname), data)
-            s3_proxy.object.set_contents_from_filename(fname)
-    return s3_proxy
+# @odo_append.register(S3(PICKLE), object)
+# def anything_to_s3_pickle(s3_proxy, data, **kwargs):
+#     with tmpfile('.pkl', '.') as fname:
+#         with open(fname, 'wb') as f_out:
+#             odo_append(PICKLE(fname), data)
+#             s3_proxy.object.set_contents_from_filename(fname)
+#     return s3_proxy
 
 
-@odo_append.register(PICKLE, S3(PICKLE))
-def s3_to_pickle(pkl_proxy, s3_proxy, **kwargs):
-    s3_proxy.object.get_contents_to_filename(pkl_proxy.path)
-    return s3_proxy.subtype(pkl_proxy.path, **kwargs)
+# @odo_append.register(PICKLE, S3(PICKLE))
+# def s3_to_pickle(pkl_proxy, s3_proxy, **kwargs):
+#     s3_proxy.object.get_contents_to_filename(pkl_proxy.path)
+#     return s3_proxy.subtype(pkl_proxy.path, **kwargs)
 
 
 @odo_append.register(MATRIXMARKET, spmatrix)
