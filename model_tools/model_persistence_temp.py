@@ -52,232 +52,122 @@ Load components
                     - convention:
                         - <filename>.modelproperties.<type>
                 - expand model properties
+
+
+Model notes
+- Save submodels recursively
+- Reconstruct submodels recursively
+- List of all submodels
+- Each submodel is it's own property definition
+    - Root object is the model object itself
+        - Root
+            - name
+            - <address>
+                - Stored as a hidden file of the same name
+        - Submodels
+            - Dictionary of properties with addresses of model objects
+                {
+                    <name> : <address>,
+                    ...,
+                    <name>: <address>
+                }
+
+- Mechanism
+    - Model.save()
+        - Classmethod
+        - Load model properties
+        - Return a new model instance
+    - Model.load()
+        - Classmethod
+        - Create model properties
+
+
+Tests
+- save
+    - Create model properties
+        - Single
+        - Nested
+            - 1
+            - 10
+            - 100
+    - Write to file
+        - local
+            - pickle
+                - file pickle to model_properties
+        - s3
+            - pickle
+- load
+    - Read from file
+        - local
+            - pickle
+        - s3
+            - pickle
+    - Restore model properties
+
 """
 
 
-# @odo_convert.register(PICKLE, Model)
-def model_to_pickle(model_obj):
-    # model_properties = odo_convert(ModelProperties, model_obj)
-    pass
+class EstimatorPickler(object):
+    _save_attrs = []
+
+    def __init__(self, save_attrs=None):
+        self.save_attrs = save_attrs or self._save_attrs
+
+    def save(self, obj, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+        paths = self._save_state(obj, path)
+        obj_copy = clone(obj)
+        for attr, path_attr in paths.iteritems():
+            setattr(obj_copy, attr, path_attr)
+        path_instance = os.path.join(path, 'instance.pkl')
+        with open(path_instance, 'wb') as f_out:
+            pickle.dump(obj_copy, f_out)
+
+    def _save_state(self, obj, path):
+        paths = {}
+        for attr in self.save_attrs:
+            path_attr = os.path.join(path, u'.{}'.format(attr))
+            with open(path_attr, 'wb') as f_out:
+                val = getattr(obj, attr, None)
+                if val is not None:
+                    pickle.dump(val, f_out)
+                    paths[attr] = path_attr
+        return paths
+
+    def load(self, path):
+        path_instance = os.path.join(path, 'instance.pkl')
+        with open(path_instance, 'rb') as f_in:
+            obj = pickle.load(f_in)
+        self._load_state(obj, path)
+        return obj
+
+    def _load_state(self, obj, path):
+        for attr in self.save_attrs:
+            path_attr = getattr(obj, attr)
+            if os.path.exists(path_attr):
+                with open(path_attr, 'rb') as f_in:
+                    val = pickle.load(f_in)
+                    setattr(obj, attr, val)
+            else:
+                print("Could not find file for attribute {} at {}".format(attr, path_attr))
 
 
-def save(path, obj):
-    print("Saving {} to {}".format(path, repr(obj)))
+"""
+import os
+from sklearn.base import clone
+from sklearn.decomposition import TruncatedSVD
+from sklearn.datasets import make_low_rank_matrix
 
+X = make_low_rank_matrix()
+model_svd = TruncatedSVD()
+model_svd.fit(X)
 
-def save_model_properties(model_properties):
-    #   Keep track of the model_properties object
-    root_name = model_properties['root_name']
-    root_path = model_properties['props'][root_name].get('path_model')
-    if root_path is None:
-        pass
-        #   Where should the root obj be saved?
-    basic_properties = {
-        'root_name': root_name,
-        'props': {} }
+SVDEstimatorPickler = EstimatorPickler(save_attrs=['components_', 'explained_variance_', 'explained_variance_ratio_'])
+SVDEstimatorPickler.save(model_svd, path='test_svd_pkl')
+svd2 = SVDEstimatorPickler.load(path='test_svd_pkl')
 
-    #   Save individual model properties
-    for name, props in model_properties['props']:
-        path_model = props.get('path_model') or '{}.model.pkl'.format(name)
-        props = {
-            'root_name': root_name,
-            'props': basic_properties['props'][name]
-        }
-        # odo_convert(path_model, props)
-        save(path_model, props)
-        #   Add info to the basic properties, so it can be reconstructed
-        basic_properties['props'][name]['path_model'] = path_model
-
-    #   Save the model_properties object
-    #   TBD: Where should this be saved? This has the most important info.
-    #       - To the data path, I guess
-
-
-# Model notes
-# - Save submodels recursively
-# - Reconstruct submodels recursively
-# - List of all submodels
-# - Each submodel is it's own property definition
-#     - Root object is the model object itself
-#         - Root
-#             - name
-#             - <address>
-#                 - Stored as a hidden file of the same name
-#         - Submodels
-#             - Dictionary of properties with addresses of model objects
-#                 {
-#                     <name> : <address>,
-#                     ...,
-#                     <name>: <address>
-#                 }
-
-# - Mechanism
-#     - Model.save()
-#         - Classmethod
-#         - Load model properties
-#         - Return a new model instance
-#     - Model.load()
-#         - Classmethod
-#         - Create model properties
-
-
-# Tests
-# - save
-#     - Create model properties
-#         - Single
-#         - Nested
-#             - 1
-#             - 10
-#             - 100
-#     - Write to file
-#         - local
-#             - pickle
-#                 - file pickle to model_properties
-#         - s3
-#             - pickle
-# - load
-#     - Read from file
-#         - local
-#             - pickle
-#         - s3
-#             - pickle
-#     - Restore model properties
-
-
-
-class ModelProperties(object):
-    """
-    Truncated form of model permitting easy reconstruction.
-    """
-
-    _include_attrs = None
-    _exclude_attrs = [
-        'submodels',
-        'data',
-    ]
-
-    class Node(object):
-        def __init__(self, obj, parent):
-            self.obj = obj
-            self.parent = parent
-            self.name = u'{}.{}'.format(parent.name, obj.name) if parent else obj.name
-
-    def __init__(self, include_attrs=None, exclude_attrs=None, *args, **kwargs):
-        super(ModelProperties, self).__init__()
-        self.include_attrs = include_attrs or self._include_attrs
-        self.exclude_attrs = exclude_attrs or self._exclude_attrs
-
-    def to_model(self, obj_props):
-        """
-        Restore a global dictionary of model properties to a root model object and its submodels
-
-        Input::
-
-            {
-                'root_name': <Name of root object>,
-                'props': {
-                    <model name>: {
-                        <attribute name>: ...,
-                        ...,
-                        <attribute name>: ...
-                    },
-                    ...,
-                    <model name>: {
-                        <attribute name>: ...,
-                        ...,
-                        <attribute name>: ...
-                    }
-                }
-            }
-
-        Model names represent their nested structure like this:
-            - <grandparent name>.<parent name>.<name>
-        """
-        objs_expanded = {}
-
-        model_obj = root
-
-        def _expand(name, data):
-            #   Initialize the class with the original configuration, then set the saved attributes on it.
-            obj = objs_expanded.get(name)
-            if not obj:
-                meta = data.pop('__meta')
-                obj = meta['__class__'](config=data['orig_config'])
-                for k, v in data.iteritems():
-                    setattr(obj, k, v)
-                #   Now associate expanded submodels
-                submodel_names = getattr(obj, 'submodels', [])
-                obj.submodels = [ _expand(name, obj_props.get(name)) for name in submodel_names ]
-                objs_expanded[name] = obj
-            return obj
-
-        root_name = obj_props['root_name']
-        root_props = obj_props['props'][root_name]
-        root_obj = _expand(root_name, root_props)
-        return root_obj
-
-
-# @odo_convert.register(PICKLE, Model)
-def from_model(model_obj, parent=None, incude_attrs=None, exclude_attrs=None):
-    """
-    Create a global dictionary of models and their properties.
-    """
-    node = self.Node(model_obj, parent)
-    path_model_props = node.obj.path_model
-    path_base, fname = path_model_props.rsplit(os.sep)
-    # path_model =  TBD ???
-    model_clone = node.obj.clone(
-        node.obj,
-        incude_attrs=include_attrs,
-        exclude_attrs=exclude_attrs)
-    obj_props = {
-        'root': {
-            'name': node.obj.name,
-            'path': os.path.join(path_base, '.{}'.format(fname)),
-        },
-        'submodels': [
-            self.from_model(submodel, node) for submodel in node.obj.submodels
-        ]
-    }
-    return obj_props
-
-
-    def clone(self, obj):
-
-        cls = obj.__class__
-        if self.include_attrs is not None:
-            props = {k: getattr(self, k, None) for k, v in self.include_attrs}
-        else:
-            attrs = inspect.getmembers(obj)
-            # No private attributes or routines
-            attrs = filter(
-                lambda x: not (x[0].startswith('__') or inspect.isroutine(x[1])),
-                attrs)
-            if self.exclude_attrs:
-                #   Remove specifically excluded attrs
-                attrs = filter(lambda x: x[0] not in set(self.exclude_attrs), attrs)
-            props = dict(attrs)
-        obj_new = cls
-        return obj_new
-
-
-# @odo_convert.register(ModelProperties, Model)
-def model_to_modelproperties(model_obj, include_attrs=None, exclude_attrs=None, **kwargs):
-    model_props_maker = ModelProperties(include_attrs=include_attrs, exclude_attrs=exclude_attrs)
-    model_props = model_props_maker.compress(model_obj)
-    return model_props
-
-
-# @odo_convert.register(Model, ModelProperties)
-def modelproperties_to_model(model_props, **kwargs):
-    model_props_maker = ModelProperties()
-    model_obj= model_props_maker.expand(model_props)
-    return model_obj
-
-
-# @odo_convert.register(ModelProperties, odo_util.PICKLE)
-def pickle_to_modelproperties(ctx, **kwargs):
-    pass
+"""
 
 
 def test_persist():
