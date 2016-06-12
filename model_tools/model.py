@@ -146,62 +146,6 @@ class ModelFactory(object):
 make_model = ModelFactory()
 
 
-# def make_model(config, namespace=None):
-#     if namespace is None:
-#         namespace = globals()
-#     params = {
-#         'config': config,
-#         'name': config.get('name'),
-#         'namespace': namespace}
-#     wrapper_cls = load_model_wrapper(config, namespace=namespace)
-#     return wrapper_cls(**params)
-
-
-# def load_model_wrapper(config, namespace=None):
-#     info = config.get('wrapper_class')
-#     return info if isinstance(info, callable) else (Model if info is None else load_attribute(info, namespace))
-
-
-# def load_model_callable(config, namespace=None):
-#     if namespace is None:
-#         namespace = globals()
-#     info = config.get('model_callable') or getattr(
-#         self, '_model_callable', None)
-#     if info is not None:
-#         model_callable = info if isinstance(info, callable) else get_attribute(info, namespace)
-#         assert callable(model_callable)
-#     return model_callable
-
-
-# class Configurer(object):
-#     def __init__(self, config=None, *args, **kwargs):
-#         super(Configurer, self).__init__()
-#         self.config = self._init_config() if config is None else config
-
-#     def _init_config(self):
-#         return None
-
-    # def _setup_persister(self, config, globals_=None):
-    #     def _get_persister_class(config, globals_):
-    #         namespace = {
-    #             'pickle': PicklerMixin,
-    #             's3': S3Mixin,
-    #             'sqs': SQSMixin,
-    #         }
-    #         cls = config.get('persister') or 'pickle'
-    #         cls = load_attribute(cls, globals_, namespace)
-    #         return cls
-
-    #     persister_cls = _get_persister_class(config, globals_)
-    #     return persister_cls(**config['persister_params'])s
-
-
-    # def _load_model_callable(self, namespace=None):
-    #     return getattr(self, '_model_callable', None) or load_model_callable(self.config, namespace)
-
-
-
-
 
 class Persister(object):
     _persist_attrs = None
