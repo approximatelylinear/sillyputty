@@ -13,11 +13,12 @@ except ImportError:
 import pdb
 
 #   3rd party
+from sklearn.base import clone
 
 #   Custom current
 # from .util.util import md5_hex, import_func
 # from .util import odo_util
-from model_tools.model import Model
+# from model_tools.model import Model
 from model_tools.util import odo_util
 from model_tools.util.odo_util import odo, odo_convert, odo_resource, odo_append
 
@@ -107,6 +108,25 @@ Tests
 """
 
 
+
+"""
+import os
+from sklearn.base import clone
+from sklearn.decomposition import TruncatedSVD
+from sklearn.datasets import make_low_rank_matrix
+
+X = make_low_rank_matrix()
+model_svd = TruncatedSVD()
+model_svd.fit(X)
+
+SVDEstimatorPickler = EstimatorPickler(
+    save_attrs=['components_', 'explained_variance_', 'explained_variance_ratio_'])
+SVDEstimatorPickler.save(model_svd, path='test_svd_pkl')
+svd2 = SVDEstimatorPickler.load(path='test_svd_pkl')
+
+"""
+
+
 class EstimatorPickler(object):
     _save_attrs = []
 
@@ -152,22 +172,6 @@ class EstimatorPickler(object):
             else:
                 print("Could not find file for attribute {} at {}".format(attr, path_attr))
 
-
-"""
-import os
-from sklearn.base import clone
-from sklearn.decomposition import TruncatedSVD
-from sklearn.datasets import make_low_rank_matrix
-
-X = make_low_rank_matrix()
-model_svd = TruncatedSVD()
-model_svd.fit(X)
-
-SVDEstimatorPickler = EstimatorPickler(save_attrs=['components_', 'explained_variance_', 'explained_variance_ratio_'])
-SVDEstimatorPickler.save(model_svd, path='test_svd_pkl')
-svd2 = SVDEstimatorPickler.load(path='test_svd_pkl')
-
-"""
 
 
 def test_persist():
