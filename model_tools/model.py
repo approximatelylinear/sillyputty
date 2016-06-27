@@ -15,6 +15,7 @@ except ImportError:
 import pdb
 
 #   3rd party
+import dill
 import yaml
 import cloudpickle  # For function serialization
 from sklearn.pipeline import make_pipeline as sk_make_pipeline
@@ -36,8 +37,12 @@ LOGGER = logging.getLogger(__name__)
 
 
 def save_model(model_obj, path):
+    if not os.path.exists(os.path.dirname(path)):
+        os.makedirs(os.path.dirname(path))
     with open(path, 'wb') as f_out:
-        cloudpickle.dump(model_obj, path)
+        # cloudpickle.dump(model_obj, f_out)
+        # pickle.dump(model_obj, f_out)
+        dill.dump(model_obj, f_out)
 
 
 def load_model(path):
@@ -113,12 +118,12 @@ class Model(object):
 
     def _init_parameters(self, parameters):
         submodels = self.submodels
-        parameters = {}
-        parameters[self.name] = parameters
+        parameters_wrapper = {}
+        parameters_wrapper[self.name] = parameters
         if submodels is not None:
             for submodel in submodels:
-                parameters[submodel.name] = submodel.parameters
-        return parameters
+                parameters_wrapper[submodel.name] = submodel.parameters
+        return parameters_wrapper
 
     def update_parameters(self):
         """
@@ -139,7 +144,6 @@ class Model(object):
         Create this model by instantiating the model callable with the parameters.
         """
         model = None
-        parameters = self.parameters
         model_callable = self.model_callable
         if not model_callable:
             submodels = self.submodels
@@ -149,7 +153,7 @@ class Model(object):
                     #   TBD: Should this be `submodel` or `submodel.model`?
                     model = submodel.model
         else:
-            model = model_callable(**parameters)
+            model = model_callable(**self.parameters[self.name])
         return model
 
     def fit(self, X, **kwargs):

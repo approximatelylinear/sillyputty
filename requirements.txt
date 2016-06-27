@@ -7,3 +7,4 @@ pytest
 cloudpickle
 odo
 boto3
+dill

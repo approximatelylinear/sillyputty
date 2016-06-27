@@ -7,6 +7,7 @@ import logging
 #   3rd party
 import yaml
 import numpy as np
+import pandas as pd
 
 #   Custom current
 from model_tools import model
@@ -26,7 +27,7 @@ class TestCallable(object):
         print("Transforming with [ {} ] and [ {} ] ".format(X, y))
         return X
 
-    def fit_transform(self, X):
+    def fit_transform(self, X, y=None, **kwargs):
         print("Fitting and Transforming with [ {} ] and [ {} ] ".format(X, y))
         return X
 
@@ -55,11 +56,16 @@ def test():
 
 
     runner = Runner(model_config, namespace=globals())
+
     X = np.random.randn(50, 2)
     y = np.ravel(np.random.randn(50, 1))
     runner.fit(X, y)
-    runner.transform(X, y)
-    runner.fit(X, y, dshapes={'X': 'var * 2 * float64', 'y': 'var * 1 * float64'})
+    runner.transform(X, y, uri_out='test_1.csv')
+
+    pd.DataFrame(np.random.randn(50, 2)).to_csv('test_X.csv', index=False)
+    pd.DataFrame(np.random.randn(50, 1)).to_csv('test_y.csv', index=False)
+    runner.fit('test_X.csv', 'test_y.csv')
+    runner.transform(X, y, uri_out='test_2.csv')
 
 
 if __name__ == '__main__':
