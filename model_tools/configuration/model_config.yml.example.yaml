@@ -19,6 +19,9 @@ models:
             min_df: 2
             stop_words: null
             token_pattern: '(?u)\|'
+        persistence:
+            model: env://PATH_MODEL/vectorizer.model.pkl
+            data: env://PATH_DATA/vectorizer.mm
     svd: &svd
         name: svd
         wrapper_class: Model
@@ -27,6 +30,9 @@ models:
             func: 'TruncatedSVD'
         parameters:
             n_components: 50
+        persistence:
+            model: env://PATH_MODEL/svd.model.pkl
+            data: env://PATH_DATA/svd.mm
     normalizer: &normalizer
         name: normalizer
         wrapper_class: Model
@@ -35,6 +41,9 @@ models:
             func: 'Normalizer'
         parameters:
             copy: false
+        persistence:
+            model: env://PATH_MODEL/normalizer.model.pkl
+            data:
     lsa: &lsa
         name: lsa
         wrapper_class: Pipeliner
@@ -42,6 +51,9 @@ models:
         model:
             - *svd
             - *normalizer
+        persistence:
+            model:
+            data: env://PATH_DATA/lsa.mm
     kmeans: &kmeans
         name: k-means
         wrapper_class: Clusterer
@@ -55,6 +67,9 @@ models:
             n_init: 1
             # n_jobs: 5
             verbose: true
+        persistence:
+            model: env://PATH_MODEL/kmeans.model.pkl
+            data: env://PATH_DATA/kmeans.mm
     clusterer: &clusterer
         name: clusterer
         wrapper_class: Pipeliner
@@ -62,6 +77,9 @@ models:
             - *vectorizer
             - *lsa
             - *kmeans
+        persistence:
+            model: env://PATH_MODEL/clusterer.modelproperties.pkl
+            data:
 #   Main entrypoint
 model:
     *clusterer
