@@ -54,7 +54,7 @@ def test():
     }
 
 
-    runner = Runner(model_config, globals_=globals())
+    runner = Runner(model_config, namespace=globals())
     X = np.random.randn(50, 2)
     y = np.ravel(np.random.randn(50, 1))
     runner.fit(X, y)

@@ -11,7 +11,13 @@ import pandas as pd
 
 #   Custom current
 from . import model
-from .util.odo_util import odo, discover
+from .util.odo_util import odo, odo_discover
+
+try:
+    THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+except NameError:
+    THIS_DIR = os.path.abspath(os.getcwd())
+PATH_DATA = os.getenv('PATH_MODEL_DATA') or os.path.join(THIS_DIR, 'data')
 
 
 LOGGER = logging.getLogger(__name__)
@@ -33,18 +39,18 @@ class Runner(object):
     runner.fit('test_X.csv', 'test_y.csv', dshapes={'X': 'var * 2 * float64', 'y': 'var * 1 * float64'})
     """
 
-    def __init__(self, model_config=None, globals_=None):
+    def __init__(self, model_config=None, namespace=None):
         #   Obtain model from the environment variable 'MODEL'
-        self.model_obj = self._make_model(model_config, globals_=globals_)
+        self.model_obj = self._make_model(model_config, namespace=namespace)
 
-    def _make_model(self, model_config, globals_=None):
-        if globals_ is None:
-            globals_ = globals()
+    def _make_model(self, model_config, namespace=None):
+        if namespace is None:
+            namespace = globals()
         if model_config is None:
             path_model_config = os.getenv('MODEL_CONFIG')
             with open(path_model_config, 'rbU') as f_in:
                 model_config = yaml.load(f_in)
-        return model.make_model(model_config['model'], globals_=globals_)
+        return model.make_model(model_config['model'], namespace=namespace)
 
     def _load_data(self, X, y=None, dshapes=None):
         """
@@ -52,10 +58,10 @@ class Runner(object):
         """
         if dshapes is None:
             dshapes = {}
-        dshape_X = dshapes.get('X') or discover(X)
+        dshape_X = dshapes.get('X') or odo_discover(X)
         X = X if isinstance(X, np.ndarray) else odo.odo(X, pd.DataFrame, dshape=dshape_X).values
         if y is not None:
-            dshape_y = dshapes.get('y') or discover(y)
+            dshape_y = dshapes.get('y') or odo_discover(y)
             y = y if isinstance(y, np.ndarray) else odo.odo(y, pd.DataFrame, dshape=dshape_y).values
             #   Squeeze y to a 1d array, per standard conventions.
             if len(y.shape) > 1 and y.shape[1] == 1:
@@ -68,13 +74,10 @@ class Runner(object):
         """
         func = getattr(self.model_obj, name)
         res = func(*args, **kwargs)
-        self.model_obj.save()
+        model.save_model(model_obj, os.path.join(PATH_DATA, 'model.pkl'))
         return res
 
     def _run(self, name, X, y=None, dshapes=None, path_out=None, **kwargs):
-
-        pdb.set_trace()
-
         X, y = self._load_data(X, y, dshapes=dshapes)
         if y is not None:
             kwargs['y'] = y
