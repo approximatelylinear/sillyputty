@@ -51,7 +51,6 @@ def load_model(path):
 
 
 
-
 class Model(object):
     """
     Wrapper for a model that handles configuration and provides entrypoints.  It implements the scikit-learn model interface.
