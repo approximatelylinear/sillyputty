@@ -78,7 +78,6 @@ class Runner(object):
         """
         func = getattr(self.model_obj, name)
         res = func(*args, **kwargs)
-        model.save_model(self.model_obj, os.path.join(PATH_DATA, 'model.dill'))
         return res
 
     def _run(self, name, X, y=None, dshapes=None, uri_out=None, **kwargs):
@@ -86,6 +85,7 @@ class Runner(object):
         if y is not None:
             kwargs['y'] = y
         res = self._delegate(name, X, **kwargs)
+        model.save_model(self.model_obj, os.path.join(PATH_DATA, 'model.dill'))
         if uri_out is not None:
             if res is not None:
                 odo.odo(res, uri_out)

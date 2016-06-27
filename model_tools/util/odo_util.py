@@ -10,13 +10,14 @@ except ImportError:
 #   3rd party
 import yaml
 import numpy as np
+import pandas as pd
 from scipy.sparse import spmatrix, csc_matrix, csr_matrix, coo_matrix, hstack as sparse_hstack
 from scipy.io import mminfo, mmread, mmwrite
 import odo
 from odo import (
     convert as odo_convert, append as odo_append,
     resource as odo_resource, discover as odo_discover)
-from odo import S3, Temp
+from odo import S3, Temp, CSV
 from odo.utils import tmpfile
 
 #   Types
@@ -95,11 +96,6 @@ def convert_object_to_pickle(data, **kwargs):
         data_pkl = pickle.dumps(data)
     except Exception as exc:
         raise
-        # TBD
-        # try:
-        #     data_pkl = cloudpickle.dumps(data)
-        # except Exception as exc2:
-        #     raise
     return data_pkl
 
 
@@ -166,6 +162,15 @@ def append_object_to_yaml(c, data, **kwargs):
     return c
 
 
+@odo_append.register(CSV, csr_matrix)
+def append_csr_to_csv(c, data, **kwargs):
+    data_coo = data.tocoo(copy=False)
+    df = pd.DataFrame({
+        'data': data_coo.data,
+        'row': data_coo.row,
+        'col': data_coo.col})
+    df.to_csv(c.path, index=False)
+    return c
 
 
 #   Examples
