@@ -1,6 +1,6 @@
 # Model Tools #
 
-This provides helpers for implementing the Scikit-Learn interface used internally by Hume.
+This provides helpers for implementing the Scikit-Learn interface.
 
 The overall rationale is to provide utilities for: 
 
@@ -32,8 +32,7 @@ The overall rationale is to provide utilities for:
 
 ### Who do I talk to? ###
 
-* MJ Berends (mj@dose.com)
-* Dose Data Science team
+* MJ Berends (mjr.berends@gmail.com)
 
 
 ### Example Model Configuration
